@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gestionale Tabacchi & Cassa</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 4rem); }
+        body { -webkit-tap-highlight-color: transparent; user-select: none; }
+        input, select, textarea { user-select: text; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen pb-24">
+
+    <!-- Header / Top Bar -->
+    <header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-30 px-4 py-3 flex items-center justify-between shadow-md">
+        <div class="flex items-center space-x-3">
+            <div class="bg-indigo-600 p-2 rounded-lg">
+                <i class="fa-solid me-1 fa-store text-xl text-white"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg leading-tight">Gestionale Pro</h1>
+                <p class="text-xs text-slate-400">Gratta&Vinci • Ordini • Incassi</p>
+            </div>
+        </div>
+        <button onclick="resetDemoData()" class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-600 transition">
+            <i class="fa-solid fa-rotate-left mr-1"></i> Reset Demo
+        </button>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="max-w-4xl mx-auto p-4 space-y-6">
+
+        <!-- SECTION: DASHBOARD -->
+        <section id="sec-dashboard" class="space-y-4">
+            <h2 class="text-xl font-bold flex items-center gap-2">
+                <i class="fa-solid fa-chart-pie text-indigo-400"></i> Panoramica Generale
+            </h2>
+            
+            <!-- Cards Summary -->
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                    <p class="text-xs text-slate-400 uppercase font-semibold">Totale Incassato</p>
+                    <p class="text-xl font-bold text-emerald-400 mt-1" id="dash-tot-incassi">€ 0.00</p>
+                </div>
+                <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                    <p class="text-xs text-slate-400 uppercase font-semibold">Valore G&V Rimanenti</p>
+                    <p class="text-xl font-bold text-amber-400 mt-1" id="dash-tot-gv">€ 0.00</p>
+                </div>
+                <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 col-span-2 md:col-span-1">
+                    <p class="text-xs text-slate-400 uppercase font-semibold">Ordini In Sospeso</p>
+                    <p class="text-xl font-bold text-indigo-400 mt-1" id="dash-ordini-sospesi">0</p>
+                </div>
+            </div>
+
+            <!-- Chart Box -->
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                <h3 class="text-sm font-semibold mb-3 text-slate-300">Ripartizione Metodi di Incasso</h3>
+                <div class="relative h-48 w-full flex justify-center">
+                    <canvas id="incassiChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION: GRATTA E VINCI -->
+        <section id="sec-gv" class="hidden space-y-4">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-ticket text-amber-400"></i> Gratta e Vinci
+                </h2>
+                <button onclick="openModal('modal-gv')" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-1 shadow">
+                    <i class="fa-solid fa-plus"></i> Nuovo Pacco
+                </button>
+            </div>
+
+            <!-- G&V Item List -->
+            <div id="list-gv" class="grid gap-3">
+                <!-- Dynamic Items -->
+            </div>
+        </section>
+
+        <!-- SECTION: ORDINI -->
+        <section id="sec-ordini" class="hidden space-y-4">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-box-archive text-blue-400"></i> Ordini & Fornitori
+                </h2>
+                <button onclick="openModal('modal-ordini')" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-1 shadow">
+                    <i class="fa-solid fa-plus"></i> Nuovo Ordine
+                </button>
+            </div>
+
+            <!-- Ordini Filter -->
+            <div class="flex gap-2 overflow-x-auto pb-1">
+                <button onclick="filterOrdini('TUTTI')" class="btn-filter-ord bg-indigo-600 text-white text-xs px-3 py-1.5 rounded-full font-semibold whitespace-nowrap">Tutti</button>
+                <button onclick="filterOrdini('In Sospeso')" class="btn-filter-ord bg-slate-800 text-slate-300 text-xs px-3 py-1.5 rounded-full font-semibold whitespace-nowrap border border-slate-700">In Sospeso</button>
+                <button onclick="filterOrdini('Confermato')" class="btn-filter-ord bg-slate-800 text-slate-300 text-xs px-3 py-1.5 rounded-full font-semibold whitespace-nowrap border border-slate-700">Confermati</button>
+                <button onclick="filterOrdini('Consegnato')" class="btn-filter-ord bg-slate-800 text-slate-300 text-xs px-3 py-1.5 rounded-full font-semibold whitespace-nowrap border border-slate-700">Consegnati</button>
+            </div>
+
+            <div id="list-ordini" class="space-y-3">
+                <!-- Dynamic Orders -->
+            </div>
+        </section>
+
+        <!-- SECTION: INCASSI -->
+        <section id="sec-incassi" class="hidden space-y-4">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-wallet text-emerald-400"></i> Registro Incassi
+                </h2>
+                <button onclick="openModal('modal-incassi')" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-1 shadow">
+                    <i class="fa-solid fa-plus"></i> Registra Incasso
+                </button>
+            </div>
+
+            <div id="list-incassi" class="space-y-2">
+                <!-- Dynamic Incassi -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Bottom Navigation Bar for Mobile -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-slate-800/95 backdrop-blur-md border-t border-slate-700 z-40 px-2 py-2">
+        <div class="max-w-md mx-auto flex justify-around items-center">
+            <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn flex flex-col items-center text-indigo-400 p-1">
+                <i class="fa-solid fa-chart-pie text-lg"></i>
+                <span class="text-[10px] font-semibold mt-1">Dashboard</span>
+            </button>
+            <button onclick="switchTab('gv')" id="nav-gv" class="nav-btn flex flex-col items-center text-slate-400 hover:text-slate-200 p-1">
+                <i class="fa-solid fa-ticket text-lg"></i>
+                <span class="text-[10px] font-semibold mt-1">G & V</span>
+            </button>
+            <button onclick="switchTab('ordini')" id="nav-ordini" class="nav-btn flex flex-col items-center text-slate-400 hover:text-slate-200 p-1">
+                <i class="fa-solid fa-box-archive text-lg"></i>
+                <span class="text-[10px] font-semibold mt-1">Ordini</span>
+            </button>
+            <button onclick="switchTab('incassi')" id="nav-incassi" class="nav-btn flex flex-col items-center text-slate-400 hover:text-slate-200 p-1">
+                <i class="fa-solid fa-wallet text-lg"></i>
+                <span class="text-[10px] font-semibold mt-1">Incassi</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- MODAL: GRATTA E VINCI -->
+    <div id="modal-gv" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-md p-5 space-y-4 shadow-2xl">
+            <h3 class="font-bold text-lg text-slate-100" id="title-modal-gv">Nuovo Pacco Gratta e Vinci</h3>
+            <form id="form-gv" onsubmit="saveGV(event)" class="space-y-3">
+                <input type="hidden" id="gv-id">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Nome Biglietto</label>
+                    <input type="text" id="gv-nome" required placeholder="Es. Il Miliardario" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Prezzo (€)</label>
+                        <input type="number" step="0.5" id="gv-prezzo" required placeholder="5" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Biglietti Iniziali</label>
+                        <input type="number" id="gv-totali" required placeholder="60" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Biglietti Rimanenti</label>
+                    <input type="number" id="gv-rimanenti" required placeholder="60" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('modal-gv')" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-semibold">Annulla</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-xs font-semibold text-white">Salva Pacco</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: ORDINI -->
+    <div id="modal-ordini" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-md p-5 space-y-4 shadow-2xl">
+            <h3 class="font-bold text-lg text-slate-100" id="title-modal-ordini">Nuovo Ordine</h3>
+            <form id="form-ordini" onsubmit="saveOrdine(event)" class="space-y-3">
+                <input type="hidden" id="ord-id">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Fornitore / Descrizione</label>
+                    <input type="text" id="ord-fornitore" required placeholder="Es. Logista / Sigarette" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Importo (€)</label>
+                        <input type="number" step="0.01" id="ord-importo" required placeholder="1250.00" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Stato Ordine</label>
+                        <select id="ord-stato" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                            <option value="In Sospeso">In Sospeso</option>
+                            <option value="Confermato">Confermato</option>
+                            <option value="Consegnato">Consegnato</option>
+                            <option value="Annullato">Annullato</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Data Consegna Prevista</label>
+                    <input type="date" id="ord-data" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('modal-ordini')" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-semibold">Annulla</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-xs font-semibold text-white">Salva Ordine</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: INCASSI -->
+    <div id="modal-incassi" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-md p-5 space-y-4 shadow-2xl">
+            <h3 class="font-bold text-lg text-slate-100" id="title-modal-incassi">Registra Incasso</h3>
+            <form id="form-incassi" onsubmit="saveIncasso(event)" class="space-y-3">
+                <input type="hidden" id="inc-id">
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Importo (€)</label>
+                        <input type="number" step="0.01" id="inc-importo" required placeholder="450.00" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Metodo</label>
+                        <select id="inc-metodo" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                            <option value="Contanti">Contanti</option>
+                            <option value="POS">POS / Carta</option>
+                            <option value="Bonifico">Bonifico</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Categoria</label>
+                    <input type="text" id="inc-categoria" placeholder="Es. Corrispettivi Giorno, Servizi" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Note</label>
+                    <input type="text" id="inc-note" placeholder="Opzionale..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('modal-incassi')" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-semibold">Annulla</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-xs font-semibold text-white">Registra</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- App Logic Script -->
+    <script>
+        // Initial Demo Data
+        const defaultData = {
+            gv: [
+                { id: '1', nome: 'Il Miliardario', prezzo: 5, totali: 60, rimanenti: 42 },
+                { id: '2', nome: '100X', prezzo: 10, totali: 30, rimanenti: 12 },
+                { id: '3', nome: 'Tutto per Tutto', prezzo: 2, totali: 100, rimanenti: 88 }
+            ],
+            ordini: [
+                { id: '1', fornitore: 'Logista Italia', importo: 1850.00, stato: 'In Sospeso', data: '2026-03-25' },
+                { id: '2', fornitore: 'Lotto & Gratta', importo: 600.00, stato: 'Confermato', data: '2026-03-24' }
+            ],
+            incassi: [
+                { id: '1', importo: 820.50, metodo: 'Contanti', categoria: 'Corrispettivi', note: 'Turno Mattina', data: '2026-03-23' },
+                { id: '2', importo: 410.00, metodo: 'POS', categoria: 'Corrispettivi', note: 'Turno Mattina', data: '2026-03-23' }
+            ]
+        };
+
+        // Application State
+        let store = JSON.parse(localStorage.getItem('tabacchi_app_data')) || defaultData;
+        let chartInstance = null;
+        let currentFilterOrdini = 'TUTTI';
+
+        function saveData() {
+            localStorage.setItem('tabacchi_app_data', JSON.stringify(store));
+            render();
+        }
+
+        function resetDemoData() {
+            if (confirm('Ripristinare i dati di esempio?')) {
+                store = JSON.parse(JSON.stringify(defaultData));
+                saveData();
+            }
+        }
+
+        // Navigation Navigation
+        function switchTab(tabId) {
+            ['dashboard', 'gv', 'ordini', 'incassi'].forEach(t => {
+                document.getElementById(`sec-${t}`).classList.add('hidden');
+                const btn = document.getElementById(`nav-${t}`);
+                btn.classList.remove('text-indigo-400');
+                btn.classList.add('text-slate-400');
+            });
+            document.getElementById(`sec-${tabId}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`nav-${tabId}`);
+            activeBtn.classList.remove('text-slate-400');
+            activeBtn.classList.add('text-indigo-400');
+        }
+
+        // Modals
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { 
+            document.getElementById(id).classList.add('hidden');
+            const form = document.querySelector(`#${id} form`);
+            if(form) form.reset();
+            const idInput = document.querySelector(`#${id} input[type="hidden"]`);
+            if(idInput) idInput.value = '';
+        }
+
+        // --- G&V LOGIC ---
+        function saveGV(e) {
+            e.preventDefault();
+            const id = document.getElementById('gv-id').value || Date.now().toString();
+            const item = {
+                id,
+                nome: document.getElementById('gv-nome').value,
+                prezzo: parseFloat(document.getElementById('gv-prezzo').value),
+                totali: parseInt(document.getElementById('gv-totali').value),
+                rimanenti: parseInt(document.getElementById('gv-rimanenti').value)
+            };
+            const idx = store.gv.findIndex(x => x.id === id);
+            if(idx > -1) store.gv[idx] = item;
+            else store.gv.push(item);
+            closeModal('modal-gv');
+            saveData();
+        }
+
+        function editGV(id) {
+            const item = store.gv.find(x => x.id === id);
+            if(!item) return;
+            document.getElementById('gv-id').value = item.id;
+            document.getElementById('gv-nome').value = item.nome;
+            document.getElementById('gv-prezzo').value = item.prezzo;
+            document.getElementById('gv-totali').value = item.totali;
+            document.getElementById('gv-rimanenti').value = item.rimanenti;
+            openModal('modal-gv');
+        }
+
+        function deleteGV(id) {
+            if(confirm('Eliminare questo pacco?')) {
+                store.gv = store.gv.filter(x => x.id !== id);
+                saveData();
+            }
+        }
+
+        // --- ORDINI LOGIC ---
+        function saveOrdine(e) {
+            e.preventDefault();
+            const id = document.getElementById('ord-id').value || Date.now().toString();
+            const item = {
+                id,
+                fornitore: document.getElementById('ord-fornitore').value,
+                importo: parseFloat(document.getElementById('ord-importo').value),
+                stato: document.getElementById('ord-stato').value,
+                data: document.getElementById('ord-data').value || new Date().toISOString().split('T')[0]
+            };
+            const idx = store.ordini.findIndex(x => x.id === id);
+            if(idx > -1) store.ordini[idx] = item;
+            else store.ordini.push(item);
+            closeModal('modal-ordini');
+            saveData();
+        }
+
+        function editOrdine(id) {
+            const item = store.ordini.find(x => x.id === id);
+            if(!item) return;
+            document.getElementById('ord-id').value = item.id;
+            document.getElementById('ord-fornitore').value = item.fornitore;
+            document.getElementById('ord-importo').value = item.importo;
+            document.getElementById('ord-stato').value = item.stato;
+            document.getElementById('ord-data').value = item.data;
+            openModal('modal-ordini');
+        }
+
+        function deleteOrdine(id) {
+            if(confirm('Eliminare questo ordine?')) {
+                store.ordini = store.ordini.filter(x => x.id !== id);
+                saveData();
+            }
+        }
+
+        function filterOrdini(stato) {
+            currentFilterOrdini = stato;
+            renderOrdini();
+        }
+
+        // --- INCASSI LOGIC ---
+        function saveIncasso(e) {
+            e.preventDefault();
+            const id = document.getElementById('inc-id').value || Date.now().toString();
+            const item = {
+                id,
+                importo: parseFloat(document.getElementById('inc-importo').value),
+                metodo: document.getElementById('inc-metodo').value,
+                categoria: document.getElementById('inc-categoria').value || 'Generico',
+                note: document.getElementById('inc-note').value,
+                data: new Date().toISOString().split('T')[0]
+            };
+            const idx = store.incassi.findIndex(x => x.id === id);
+            if(idx > -1) store.incassi[idx] = item;
+            else store.incassi.push(item);
+            closeModal('modal-incassi');
+            saveData();
+        }
+
+        function deleteIncasso(id) {
+            if(confirm('Eliminare questo incasso?')) {
+                store.incassi = store.incassi.filter(x => x.id !== id);
+                saveData();
+            }
+        }
+
+        // --- RENDER LOGIC ---
+        function render() {
+            renderDashboard();
+            renderGV();
+            renderOrdini();
+            renderIncassi();
+        }
+
+        function renderDashboard() {
+            const totIncassi = store.incassi.reduce((acc, curr) => acc + curr.importo, 0);
+            const totGVVal = store.gv.reduce((acc, curr) => acc + (curr.rimanenti * curr.prezzo), 0);
+            const ordiniSospesi = store.ordini.filter(o => o.stato === 'In Sospeso').length;
+
+            document.getElementById('dash-tot-incassi').innerText = `€ ${totIncassi.toFixed(2)}`;
+            document.getElementById('dash-tot-gv').innerText = `€ ${totGVVal.toFixed(2)}`;
+            document.getElementById('dash-ordini-sospesi').innerText = ordiniSospesi;
+
+            // Render Chart
+            const contanti = store.incassi.filter(i => i.metodo === 'Contanti').reduce((a, b) => a + b.importo, 0);
+            const pos = store.incassi.filter(i => i.metodo === 'POS').reduce((a, b) => a + b.importo, 0);
+            const bonifico = store.incassi.filter(i => i.metodo === 'Bonifico').reduce((a, b) => a + b.importo, 0);
+
+            const ctx = document.getElementById('incassiChart').getContext('2d');
+            if(chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Contanti', 'POS', 'Bonifico'],
+                    datasets: [{
+                        data: [contanti, pos, bonifico],
+                        backgroundColor: ['#10b981', '#6366f1', '#f59e0b'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#94a3b8', boxWidth: 12 } }
+                    }
+                }
+            });
+        }
+
+        function renderGV() {
+            const container = document.getElementById('list-gv');
+            container.innerHTML = '';
+            store.gv.forEach(item => {
+                const venduti = item.totali - item.rimanenti;
+                const pct = Math.round((item.rimanenti / item.totali) * 100);
+                const html = `
+                    <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col justify-between">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <h3 class="font-bold text-base text-slate-100">${item.nome}</h3>
+                                <span class="text-xs text-amber-400 font-medium">Taglio: €${item.prezzo.toFixed(2)}</span>
+                            </div>
+                            <div class="flex gap-2 text-slate-400">
+                                <button onclick="editGV('${item.id}')" class="hover:text-indigo-400"><i class="fa-solid fa-pen"></i></button>
+                                <button onclick="deleteGV('${item.id}')" class="hover:text-rose-400"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </div>
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-xs text-slate-400">
+                                <span>Rimanenti: <b class="text-slate-200">${item.rimanenti}</b>/${item.totali}</span>
+                                <span>Incassato: <b class="text-emerald-400">€${(venduti * item.prezzo).toFixed(2)}</b></span>
+                            </div>
+                            <div class="w-full bg-slate-700 h-2 rounded-full overflow-hidden">
+                                <div class="bg-amber-400 h-full rounded-full" style="width: ${pct}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += html;
+            });
+        }
+
+        function renderOrdini() {
+            const container = document.getElementById('list-ordini');
+            container.innerHTML = '';
+            const filtered = currentFilterOrdini === 'TUTTI' 
+                ? store.ordini 
+                : store.ordini.filter(o => o.stato === currentFilterOrdini);
+
+            filtered.forEach(item => {
+                let badgeColor = 'bg-slate-700 text-slate-300';
+                if(item.stato === 'In Sospeso') badgeColor = 'bg-amber-500/20 text-amber-400 border border-amber-500/30';
+                if(item.stato === 'Confermato') badgeColor = 'bg-blue-500/20 text-blue-400 border border-blue-500/30';
+                if(item.stato === 'Consegnato') badgeColor = 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+                if(item.stato === 'Annullato') badgeColor = 'bg-rose-500/20 text-rose-400 border border-rose-500/30';
+
+                const html = `
+                    <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex justify-between items-center">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="font-bold text-slate-100">${item.fornitore}</span>
+                                <span class="text-[10px] px-2 py-0.5 rounded-full font-semibold ${badgeColor}">${item.stato}</span>
+                            </div>
+                            <p class="text-xs text-slate-400">Data: ${item.data}</p>
+                        </div>
+                        <div class="text-right flex items-center gap-3">
+                            <span class="font-bold text-indigo-400">€ ${item.importo.toFixed(2)}</span>
+                            <button onclick="editOrdine('${item.id}')" class="text-slate-400 hover:text-indigo-400"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick="deleteOrdine('${item.id}')" class="text-slate-400 hover:text-rose-400"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += html;
+            });
+        }
+
+        function renderIncassi() {
+            const container = document.getElementById('list-incassi');
+            container.innerHTML = '';
+            store.incassi.forEach(item => {
+                const html = `
+                    <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 flex justify-between items-center text-sm">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-slate-700 p-2 rounded-lg text-emerald-400">
+                                <i class="fa-solid fa-receipt"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-slate-200">${item.categoria} <span class="text-xs text-slate-400 font-normal">(${item.metodo})</span></p>
+                                <p class="text-xs text-slate-400">${item.note || item.data}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-emerald-400">+€ ${item.importo.toFixed(2)}</span>
+                            <button onclick="deleteIncasso('${item.id}')" class="text-slate-500 hover:text-rose-400 ml-2"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += html;
+            });
+        }
+
+        // Initialize App
+        render();
+    </script>
+</body>
+</html>
